@@ -1,4 +1,4 @@
-const upstream = 'invidious.projectsegfau.lt' // 换一个稍微冷门点的实例
+const upstream = 'inv.tux.pizza' // 换一个稍微冷门点的实例
 
 export default {
   async fetch(request) {
