@@ -1,5 +1,5 @@
 // 替换为你想代理的 YouTube 镜像站或原站
-const upstream = 'www.youtube.com'
+const upstream = 'yewtu.be' // 或者 invidious.nerdvpn.de 等其他实例
 
 export default {
   async fetch(request, env) {
