@@ -1,31 +1,29 @@
-import Router from './router'
-import img from './handlers/img'
-import video, { videoInfo } from './handlers/video'
+// 替换为你想代理的 YouTube 镜像站或原站
+const upstream = 'www.youtube.com'
 
-addEventListener("fetch", event => {
-    event.respondWith(handleRequest(event))
-})
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url)
+    url.host = upstream
 
-async function handleRequest(event) {
-    let response;
-    try {
+    const new_request = new Request(url.href, {
+      method: request.method,
+      headers: request.headers,
+      body: request.body
+    })
 
-        const r = new Router()
+    // 解决部分跨域和安全头问题
+    let response = await fetch(new_request)
+    let new_headers = new Headers(response.headers)
+    new_headers.set('Access-Control-Allow-Origin', '*')
+    new_headers.delete('content-security-policy')
+    new_headers.delete('content-security-policy-report-only')
+    new_headers.delete('clear-site-data')
 
-        r.get(/^\/video\/([\w\-]{6,12})\.(jpg|webp)$/, img)
-        r.get(/^\/video\/([\w\-]{6,12})\.json$/, videoInfo)
-        r.get(/^\/video\/([\w\-]{6,12})\/(\d{1,3})\/(\d+-\d+)\.ts$/, video)
-
-        response = await r.route(event)
-
-        if (!response) {
-            response = new Response('Not Found', { status: 404 })
-        }
-
-        return response
-    } catch (err) {
-        response = new Response(err.stack || err, { status: 500 })
-        return response
-    }
-
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: new_headers
+    })
+  }
 }
