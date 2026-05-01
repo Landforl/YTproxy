@@ -1,55 +1,51 @@
 export default {
   async fetch(request) {
     const url = new URL(request.url);
-    const pathParts = url.pathname.split('/').filter(p => p); 
-
-    // 1. 首页逻辑
-    if (pathParts.length === 0) {
+    
+    // 如果是首页
+    if (url.pathname === '/' || url.pathname === '') {
       return new Response(`
-        <html>
-          <head><meta charset="UTF-8"><title>Private Proxy</title></head>
-          <body style="font-family:sans-serif; text-align:center; padding-top:50px;">
-            <div style="display:inline-block; padding:20px; border:1px solid #ccc; border-radius:10px;">
-              <h2>私人中转站</h2>
-              <input type="text" id="v" placeholder="在此贴入视频 ID (11位)" style="padding:10px; width:200px;">
-              <button onclick="var id=document.getElementById('v').value.trim(); if(id) location.href='/video/' + id">播放</button>
-            </div>
-          </body>
-        </html>
-      `, { headers: { "Content-Type": "text/html;charset=UTF-8" } });
+        <body style="text-align:center;padding-top:50px;font-family:sans-serif;">
+          <h3>私人视频流中转</h3>
+          <input id="url" placeholder="贴入 YouTube 视频地址" style="width:70%;padding:10px;">
+          <button onclick="window.location.href='/proxy/'+btoa(document.getElementById('url').value)" style="padding:10px;">中转播放</button>
+          <p style="font-size:12px;color:gray;">提示：本工具仅做流量转发，请勿传播</p>
+        </body>
+      `, { headers: { 'Content-Type': 'text/html;charset=UTF-8' } });
     }
 
-    // 2. 视频中转逻辑 (修正了变量读取)
-    if (pathParts[0] === "video" && pathParts[1]) {
-      const vid = pathParts[1]; // 显式获取数组第二个元素作为 ID
-      const embedUrl = "https://youtube.com" + vid;
-      
+    // 流量中转逻辑
+    if (url.pathname.startsWith('/proxy/')) {
       try {
-        const response = await fetch(embedUrl, {
-          headers: {
-            "User-Agent": "Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
-          }
+        // 解码目标地址
+        const targetUrl = atob(url.pathname.split('/proxy/')[1]);
+        
+        // 构造伪装请求头
+        const modifiedHeaders = new Headers(request.headers);
+        modifiedHeaders.set('Host', new URL(targetUrl).hostname);
+        modifiedHeaders.set('Referer', 'https://youtube.com');
+        modifiedHeaders.set('User-Agent', 'Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1');
+
+        const response = await fetch(targetUrl, {
+          method: request.method,
+          headers: modifiedHeaders,
+          redirect: 'follow'
         });
 
-        if (!response.ok) return new Response("YouTube 拒绝了请求，状态码: " + response.status);
+        // 关键：修改返回头，允许跨域，否则 iPad 播放器会报错
+        const newHeaders = new Headers(response.headers);
+        newHeaders.set('Access-Control-Allow-Origin', '*');
+        newHeaders.delete('content-security-policy');
 
-        let html = await response.text();
-        
-        // 关键：允许 iframe 并在页面中注入必要的基础标签
-        html = html.replace('<head>', '<head><base href="https://youtube.com">');
-
-        return new Response(html, {
-          headers: { 
-            "Content-Type": "text/html;charset=UTF-8",
-            "Access-Control-Allow-Origin": "*" 
-          }
+        return new Response(response.body, {
+          status: response.status,
+          headers: newHeaders
         });
       } catch (e) {
-        return new Response("中转发生异常: " + e.message);
+        return new Response('中转出错：' + e.message, { status: 500 });
       }
     }
 
-    return new Response("未识别的路径: " + url.pathname, { status: 404 });
+    return new Response('404 Not Found', { status: 404 });
   }
 };
