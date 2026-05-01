@@ -1,6 +1,7 @@
 // 'aW52aWRpb3VzLm5lcmR2cG4uZGU=' 是 invidious.nerdvpn.de
 // 'aW52aWRpb3VzLmRyZ25zLnNwYWNl' 是 invidious.drgns.space
-const secret = 'aW52aWRpb3VzLm5lcmR2cG4uZGU='; 
+// Base64 编码后的 'iv.melmac.space'
+const secret = 'aXYubWVsbWFjLnNwYWNl'; 
 
 export default {
   async fetch(request) {
